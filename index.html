@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>აბონენტთა მართვის სისტემა</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #f3f4f6; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg mt-10">
+        <div id="main-menu" class="text-center">
+            <h1 class="text-2xl font-bold mb-6">სისტემაში შესვლა</h1>
+            <button onclick="showSection('user-login')" class="w-full bg-blue-600 text-white py-3 rounded-lg mb-4">მომხმარებელი</button>
+            <button onclick="showSection('staff-auth')" class="w-full bg-gray-800 text-white py-3 rounded-lg">თანამშრომელი</button>
+        </div>
+
+        <div id="user-login" class="hidden">
+            <h2 class="text-xl font-bold mb-4">მომხმარებლის შესვლა</h2>
+            <input id="u-code" type="text" placeholder="აბონენტის კოდი" class="w-full border p-2 mb-3 rounded">
+            <input id="u-pass" type="password" placeholder="პაროლი" class="w-full border p-2 mb-4 rounded">
+            <button onclick="loginAsUser()" class="w-full bg-blue-600 text-white py-2 rounded">შესვლა</button>
+            <button onclick="goBack()" class="w-full text-gray-500 mt-4">უკან</button>
+        </div>
+
+        <div id="staff-auth" class="hidden">
+            <h2 class="text-xl font-bold mb-4 text-red-600">თანამშრომლის კოდი</h2>
+            <input id="staff-pin" type="password" placeholder="შეიყვანეთ 5445" class="w-full border p-2 mb-4 rounded text-center text-2xl tracking-widest">
+            <button onclick="checkStaffPin()" class="w-full bg-red-600 text-white py-2 rounded">შესვლა</button>
+            <button onclick="goBack()" class="w-full text-gray-500 mt-4">უკან</button>
+        </div>
+
+        <div id="staff-panel" class="hidden">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2">თანამშრომლის სამუშაო სივრცე</h2>
+            
+            <div class="mb-8 bg-blue-50 p-4 rounded-lg">
+                <h3 class="font-bold mb-2">ახალი რეგისტრაცია</h3>
+                <input id="reg-id" placeholder="პირადი ნომერი" class="w-full border p-2 mb-2 rounded text-sm">
+                <input id="reg-code" placeholder="აბონენტის ნომერი" class="w-full border p-2 mb-2 rounded text-sm">
+                <input id="reg-fname" placeholder="სახელი" class="w-full border p-2 mb-2 rounded text-sm">
+                <input id="reg-lname" placeholder="გვარი" class="w-full border p-2 mb-2 rounded text-sm">
+                <input id="reg-phone" placeholder="ტელეფონი" class="w-full border p-2 mb-2 rounded text-sm">
+                <input id="reg-pass" type="password" placeholder="პაროლი" class="w-full border p-2 mb-2 rounded text-sm">
+                <button onclick="registerUser()" class="w-full bg-green-600 text-white py-2 rounded mt-2">რეგისტრაცია</button>
+            </div>
+
+            <div class="bg-yellow-50 p-4 rounded-lg">
+                <h3 class="font-bold mb-2">აბონენტის ძებნა</h3>
+                <input id="search-code" placeholder="შეიყვანეთ აბონენტის კოდი" class="w-full border p-2 mb-2 rounded">
+                <button onclick="searchUser()" class="w-full bg-yellow-600 text-white py-2 rounded">ძებნა</button>
+            </div>
+
+            <div id="search-result" class="mt-4 p-4 border rounded hidden bg-white">
+                </div>
+
+            <button onclick="logout()" class="w-full bg-gray-400 text-white py-2 rounded mt-6">გამოსვლა</button>
+        </div>
+
+        <div id="user-panel" class="hidden">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2">ჩემი მონაცემები</h2>
+            <div id="user-info" class="space-y-2 text-gray-700"></div>
+            <div class="mt-6 p-4 bg-blue-100 rounded text-center">
+                <p class="text-sm">მიმდინარე ბალანსი</p>
+                <p id="user-balance-view" class="text-3xl font-bold text-blue-700">0.00 ₾</p>
+            </div>
+            <button onclick="logout()" class="w-full bg-gray-400 text-white py-2 rounded mt-6">გამოსვლა</button>
+        </div>
+    </div>
+
+    <script>
+        // მონაცემების წამოღება
+        let users = JSON.parse(localStorage.getItem('users')) || [];
+
+        function showSection(id) {
+            document.querySelectorAll('body > div > div').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function goBack() { showSection('main-menu'); }
+
+        function logout() { location.reload(); }
+
+        // თანამშრომლის შესვლა
+        function checkStaffPin() {
+            const pin = document.getElementById('staff-pin').value;
+            if(pin === '5445') {
+                showSection('staff-panel');
+            } else {
+                alert('არასწორი კოდი!');
+            }
+        }
+
+        // რეგისტრაცია
+        function registerUser() {
+            const newUser = {
+                id: document.getElementById('reg-id').value,
+                code: document.getElementById('reg-code').value,
+                fname: document.getElementById('reg-fname').value,
+                lname: document.getElementById('reg-lname').value,
+                phone: document.getElementById('reg-phone').value,
+                pass: document.getElementById('reg-pass').value,
+                balance: 0
+            };
+
+            if(!newUser.code || !newUser.pass) return alert('შეავსეთ ველები!');
+            
+            users.push(newUser);
+            localStorage.setItem('users', JSON.stringify(users));
+            alert('მომხმარებელი დარეგისტრირდა!');
+            // გასუფთავება
+            document.querySelectorAll('#staff-panel input').forEach(i => i.value = '');
+        }
+
+        // ძებნა თანამშრომლის მიერ
+        function searchUser() {
+            const code = document.getElementById('search-code').value;
+            const user = users.find(u => u.code === code);
+            const resDiv = document.getElementById('search-result');
+
+            if(user) {
+                resDiv.classList.remove('hidden');
+                resDiv.innerHTML = `
+                    <p><b>სახელი:</b> ${user.fname} ${user.lname}</p>
+                    <p><b>პირადი №:</b> ${user.id}</p>
+                    <p><b>ტელეფონი:</b> ${user.phone}</p>
+                    <hr class="my-2">
+                    <p class="text-lg">ბალანსი: <span class="font-bold text-green-600">${user.balance} ₾</span></p>
+                    <div class="flex gap-2 mt-2">
+                        <input id="amt" type="number" placeholder="თანხა" class="w-1/2 border p-1 rounded">
+                        <button onclick="updateBalance('${user.code}', 'add')" class="bg-green-500 text-white px-2 rounded">+</button>
+                        <button onclick="updateBalance('${user.code}', 'sub')" class="bg-red-500 text-white px-2 rounded">-</button>
+                    </div>
+                `;
+            } else {
+                alert('მომხმარებელი ვერ მოიძებნა');
+            }
+        }
+
+        // ბალანსის მართვა
+        function updateBalance(code, type) {
+            const amt = parseFloat(document.getElementById('amt').value);
+            if(isNaN(amt)) return;
+
+            const userIndex = users.findIndex(u => u.code === code);
+            if(type === 'add') users[userIndex].balance += amt;
+            if(type === 'sub') users[userIndex].balance -= amt;
+
+            localStorage.setItem('users', JSON.stringify(users));
+            searchUser(); // განახლება
+        }
+
+        // მომხმარებლის შესვლა
+        function loginAsUser() {
+            const code = document.getElementById('u-code').value;
+            const pass = document.getElementById('u-pass').value;
+            const user = users.find(u => u.code === code && u.pass === pass);
+
+            if(user) {
+                showSection('user-panel');
+                document.getElementById('user-info').innerHTML = `
+                    <p><b>აბონენტი:</b> ${user.fname} ${user.lname}</p>
+                    <p><b>პირადი ნომერი:</b> ${user.id}</p>
+                    <p><b>კოდი:</b> ${user.code}</p>
+                    <p><b>ტელეფონი:</b> ${user.phone}</p>
+                `;
+                document.getElementById('user-balance-view').innerText = user.balance.toFixed(2) + ' ₾';
+            } else {
+                alert('არასწორი მონაცემები!');
+            }
+        }
+    </script>
+</body>
+</html>
