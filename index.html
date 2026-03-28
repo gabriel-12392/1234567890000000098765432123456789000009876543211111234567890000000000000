@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>აბონენტთა მართვის სისტემა</title>
+    <title>აბონენტთა მართვის სისტემა (Supabase)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: sans-serif; background-color: #f3f4f6; }
         .hidden { display: none; }
@@ -13,12 +14,14 @@
 <body class="p-4">
 
     <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg mt-10">
+        <!-- მთავარი მენიუ -->
         <div id="main-menu" class="text-center">
             <h1 class="text-2xl font-bold mb-6">სისტემაში შესვლა</h1>
             <button onclick="showSection('user-login')" class="w-full bg-blue-600 text-white py-3 rounded-lg mb-4">მომხმარებელი</button>
             <button onclick="showSection('staff-auth')" class="w-full bg-gray-800 text-white py-3 rounded-lg">თანამშრომელი</button>
         </div>
 
+        <!-- მომხმარებლის შესვლა -->
         <div id="user-login" class="hidden">
             <h2 class="text-xl font-bold mb-4">მომხმარებლის შესვლა</h2>
             <input id="u-code" type="text" placeholder="აბონენტის კოდი" class="w-full border p-2 mb-3 rounded">
@@ -27,13 +30,15 @@
             <button onclick="goBack()" class="w-full text-gray-500 mt-4">უკან</button>
         </div>
 
+        <!-- თანამშრომლის ავტორიზაცია -->
         <div id="staff-auth" class="hidden">
             <h2 class="text-xl font-bold mb-4 text-red-600">თანამშრომლის კოდი</h2>
-            <input id="staff-pin" type="password" placeholder="შეიყვანეთ 5445" class="w-full border p-2 mb-4 rounded text-center text-2xl tracking-widest">
+            <input id="staff-pin" type="password" placeholder="შეიყვანეთ" class="w-full border p-2 mb-4 rounded text-center text-2xl tracking-widest">
             <button onclick="checkStaffPin()" class="w-full bg-red-600 text-white py-2 rounded">შესვლა</button>
             <button onclick="goBack()" class="w-full text-gray-500 mt-4">უკან</button>
         </div>
 
+        <!-- თანამშრომლის პანელი -->
         <div id="staff-panel" class="hidden">
             <h2 class="text-xl font-bold mb-4 border-b pb-2">თანამშრომლის სამუშაო სივრცე</h2>
             
@@ -54,12 +59,12 @@
                 <button onclick="searchUser()" class="w-full bg-yellow-600 text-white py-2 rounded">ძებნა</button>
             </div>
 
-            <div id="search-result" class="mt-4 p-4 border rounded hidden bg-white">
-                </div>
+            <div id="search-result" class="mt-4 p-4 border rounded hidden bg-white"></div>
 
             <button onclick="logout()" class="w-full bg-gray-400 text-white py-2 rounded mt-6">გამოსვლა</button>
         </div>
 
+        <!-- მომხმარებლის პანელი -->
         <div id="user-panel" class="hidden">
             <h2 class="text-xl font-bold mb-4 border-b pb-2">ჩემი მონაცემები</h2>
             <div id="user-info" class="space-y-2 text-gray-700"></div>
@@ -72,30 +77,33 @@
     </div>
 
     <script>
-        // მონაცემების წამოღება
-        let users = JSON.parse(localStorage.getItem('users')) || [];
+        // --- SUPABASE კონფიგურაცია ---
+        const SUPABASE_URL = 'https://gdtjwafwyfnoirrwssak.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdGp3YWZ3eWZub2lycndzc2FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyODU2NjYsImV4cCI6MjA4Nzg2MTY2Nn0.XmYKQAbuDcRj72CzM42DyC-lR9_9FhpgAiifOqRQbKU';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // ნავიგაციის ფუნქციები
         function showSection(id) {
             document.querySelectorAll('body > div > div').forEach(el => el.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         }
 
         function goBack() { showSection('main-menu'); }
-
         function logout() { location.reload(); }
 
-        // თანამშრომლის შესვლა
+        // თანამშრომლის PIN-ის შემოწმება
         function checkStaffPin() {
-            const pin = document.getElementById('staff-pin').value;
-            if(pin === '5445') {
+            if(document.getElementById('staff-pin').value === '5445') {
                 showSection('staff-panel');
             } else {
                 alert('არასწორი კოდი!');
             }
         }
 
-        // რეგისტრაცია
-        function registerUser() {
+        // --- BACKEND ფუნქციები (SUPABASE) ---
+
+        // 1. რეგისტრაცია
+        async function registerUser() {
             const newUser = {
                 id: document.getElementById('reg-id').value,
                 code: document.getElementById('reg-code').value,
@@ -106,19 +114,27 @@
                 balance: 0
             };
 
-            if(!newUser.code || !newUser.pass) return alert('შეავსეთ ველები!');
-            
-            users.push(newUser);
-            localStorage.setItem('users', JSON.stringify(users));
-            alert('მომხმარებელი დარეგისტრირდა!');
-            // გასუფთავება
-            document.querySelectorAll('#staff-panel input').forEach(i => i.value = '');
+            if(!newUser.code || !newUser.pass) return alert('შეავსეთ აუცილებელი ველები!');
+
+            const { error } = await _supabase.from('users_list').insert([newUser]);
+
+            if (error) {
+                alert('შეცდომა რეგისტრაციისას: ' + error.message);
+            } else {
+                alert('აბონენტი წარმატებით დარეგისტრირდა!');
+                document.querySelectorAll('#staff-panel input').forEach(i => i.value = '');
+            }
         }
 
-        // ძებნა თანამშრომლის მიერ
-        function searchUser() {
+        // 2. ძებნა თანამშრომლის მიერ
+        async function searchUser() {
             const code = document.getElementById('search-code').value;
-            const user = users.find(u => u.code === code);
+            const { data: user, error } = await _supabase
+                .from('users_list')
+                .select('*')
+                .eq('code', code)
+                .single();
+
             const resDiv = document.getElementById('search-result');
 
             if(user) {
@@ -128,36 +144,50 @@
                     <p><b>პირადი №:</b> ${user.id}</p>
                     <p><b>ტელეფონი:</b> ${user.phone}</p>
                     <hr class="my-2">
-                    <p class="text-lg">ბალანსი: <span class="font-bold text-green-600">${user.balance} ₾</span></p>
+                    <p class="text-lg">ბალანსი: <span class="font-bold text-green-600">${user.balance.toFixed(2)} ₾</span></p>
                     <div class="flex gap-2 mt-2">
-                        <input id="amt" type="number" placeholder="თანხა" class="w-1/2 border p-1 rounded">
-                        <button onclick="updateBalance('${user.code}', 'add')" class="bg-green-500 text-white px-2 rounded">+</button>
-                        <button onclick="updateBalance('${user.code}', 'sub')" class="bg-red-500 text-white px-2 rounded">-</button>
+                        <input id="amt" type="number" step="0.01" placeholder="თანხა" class="w-1/2 border p-1 rounded">
+                        <button onclick="updateBalance('${user.code}', ${user.balance}, 'add')" class="bg-green-500 text-white px-2 rounded">+</button>
+                        <button onclick="updateBalance('${user.code}', ${user.balance}, 'sub')" class="bg-red-500 text-white px-2 rounded">-</button>
                     </div>
                 `;
             } else {
                 alert('მომხმარებელი ვერ მოიძებნა');
+                resDiv.classList.add('hidden');
             }
         }
 
-        // ბალანსის მართვა
-        function updateBalance(code, type) {
-            const amt = parseFloat(document.getElementById('amt').value);
-            if(isNaN(amt)) return;
+        // 3. ბალანსის განახლება
+        async function updateBalance(code, currentBalance, type) {
+            const amtValue = document.getElementById('amt').value;
+            const amt = parseFloat(amtValue);
+            if(isNaN(amt) || amt <= 0) return alert('შეიყვანეთ სწორი თანხა');
 
-            const userIndex = users.findIndex(u => u.code === code);
-            if(type === 'add') users[userIndex].balance += amt;
-            if(type === 'sub') users[userIndex].balance -= amt;
+            const newBalance = type === 'add' ? currentBalance + amt : currentBalance - amt;
 
-            localStorage.setItem('users', JSON.stringify(users));
-            searchUser(); // განახლება
+            const { error } = await _supabase
+                .from('users_list')
+                .update({ balance: newBalance })
+                .eq('code', code);
+
+            if (error) {
+                alert('შეცდომა ბალანსის განახლებისას');
+            } else {
+                searchUser(); // ინფორმაციის განახლება ეკრანზე
+            }
         }
 
-        // მომხმარებლის შესვლა
-        function loginAsUser() {
+        // 4. მომხმარებლის შესვლა (ავტორიზაცია)
+        async function loginAsUser() {
             const code = document.getElementById('u-code').value;
             const pass = document.getElementById('u-pass').value;
-            const user = users.find(u => u.code === code && u.pass === pass);
+
+            const { data: user, error } = await _supabase
+                .from('users_list')
+                .select('*')
+                .eq('code', code)
+                .eq('pass', pass)
+                .single();
 
             if(user) {
                 showSection('user-panel');
@@ -169,7 +199,7 @@
                 `;
                 document.getElementById('user-balance-view').innerText = user.balance.toFixed(2) + ' ₾';
             } else {
-                alert('არასწორი მონაცემები!');
+                alert('არასწორი აბონენტის კოდი ან პაროლი!');
             }
         }
     </script>
